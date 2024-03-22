@@ -1,9 +1,11 @@
+#+BLOG: noise on the net
+#+POSTID: 367
 #+ORG2BLOG:
 #+DATE: [2024-03-22 ven 10:15]
 #+OPTIONS: toc:nil num:nil todo:nil pri:nil tags:nil ^:nil
-#+CATEGORY: Org2Blog, WordPress
-#+TAGS: Emacs, Lisp
-#+DESCRIPTION:
+#+CATEGORY: Language learning
+#+TAGS: Rust
+#+DESCRIPTION: I will show a very compact (memory efficient) and fast implementation of a binary stack, some Test Driven Design and success types
 #+TITLE: Stacking bits
 We are digressing a little from our previous path about trees to meet a data
 structure which has a deep connection with (binary) trees.
@@ -16,7 +18,7 @@ as well as some Test Driven Design example.
 For those who want to have a look to previous posts, you can check
 - here
 - and here
-* TODO what is a stack
+* what is a stack
 A stack is a data structure which allow you to retrieve the last datum you put
 into.
 
@@ -29,7 +31,7 @@ operations you can do are:
 
 It is also known as Last In First Out queue, sometime written with the LIFO
 achronym.
-* TODO defining a binary stack
+* defining a binary stack
 Instead of creating a generic stack I'd like to focus on a very specific case: a
 stack which can only hold boolean values.
 
@@ -61,6 +63,12 @@ minimum code needed to compile it
 pub struct Stack0 {}
 
 impl Stack0 {
+
+    // adding also a constructor
+    pub fn new() -> Stack0 {
+        Stack0 {}
+    }
+
     pub fn push(self: & mut Stack0, value: bool) {
     }
 
@@ -77,34 +85,110 @@ impl Stack0 {
     }
 }
 #+end_src
-* TODO test first design
-- show how to create and run tests
-- add some basic tests
-* TODO managing unwanted status
+* test first design
+What laws should this data structure obey?
+
+Let's check a few:
+1. if I ~push~ a value, ~pop~ should return it
+2. if I ~push~ a value the size should increase by one
+3. also ~top~ should return the last thing I ~push~ -ed
+4. after ~pop~ the size should decrease
+5. a new stack should have size 0
+
+Rust has a convenient toolkit to create and execute tests: let's add a submodule
+in our library
+
+#+begin_src rust
+// this macro is used by compiler to
+// conditionally compile the next section
+#[cfg(test)]
+// this defines a module within current one
+mod tests {
+    // this statement imports everithing defined
+    // in the upper module
+    use super::*;
+
+    // this macro identifies a test
+    #[test]
+    fn empty_when_created() {
+        let result = Stack0::new().size();
+        assert_eq!(result, 0);
+    }
+
+
+}
+#+end_src
+
+by executing
+#+begin_src bash
+cargo test
+#+end_src
+we will compile the library with the tests and execute them, a report is printed
+which may look like this:
+
+#+begin_example
+running 1 test
+test tests::empty_when_created ... FAILED
+
+failures:
+
+---- tests::empty_when_created stdout ----
+thread 'tests::empty_when_created' panicked at src/lib.rs:53:9:
+assertion `left == right` failed
+  left: 1
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    tests::empty_when_created
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+#+end_example
+
+we can add more tests in the same module: e.g.
+
+#+begin_src rust
+    #[test]
+    fn size_increase_when_push() {
+        let mut stack = Stack0::new();
+        stack.push(false);
+        let result1 = stack.size();
+        stack.push(true);
+        let result2 = stack.size();
+        assert_eq!(result2, result1 + 1);
+    }
+#+end_src
+* managing unwanted status
 Now I have couple of questions
-- What happens when I try to get a book from an empty stack?
-- Can a stack grow forever? Or can I decide it is too tall to grow?
+1. What happens when I try to get a book from an empty stack?
+2. Can a stack grow forever? Or can I decide it is too tall to grow?
 
 Rust uses the ~Result~ enumeration to express this concept; a ~Result~ can be
 either be ~Ok(some_value)~ or ~Err(error)~.
 
 Being ~Result<R, E>~ a generic type, I need to specify both the result type ~R~
-and the error type ~E~
+and the error type ~E~; the result type will be of course a ~bool~ while for
+this example I will choose a simple ~String~ for the error.
 
 The stack API can be now modified to tackle our questions:
 #+begin_src rust
 pub struct Stack1 {}
 
 impl Stack1 {
-    pub fn push(self: & mut Stack1, value: bool) -> Result<bool, str>{
+    pub fn new() -> Stack1 {
+        Stack1 {}
+    }
+
+    pub fn push(self: & mut Stack1, value: bool) -> Result<bool, String>{
         Ok(value)
     }
 
-    pub fn top(self: & Stack1) -> Result<bool, str> {
+    pub fn top(self: & Stack1) -> Result<bool, String> {
         Ok(true)
     }
 
-    pub fn pop(self: & mut Stack1) -> Result<bool, str> {
+    pub fn pop(self: & mut Stack1) -> Result<bool, String> {
         Ok(true)
     }
 
@@ -112,8 +196,102 @@ impl Stack1 {
         1
     }
 }
-
-and so our tests
 #+end_src
-* TODO implementing the stack
-- creating the actual code
+
+and so our tests must be adapted; we need to add two rules and their type signature.
+
+#+begin_src rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn push_and_pop() {
+        let mut stack = Stack1::new();
+        stack.push(false);
+        stack.push(true);
+        let result1 = stack.pop();
+        let result2 = stack.pop();
+        assert_eq!(result1, Ok(true));
+        assert_eq!(result2, Ok(false));
+    }
+
+    #[test]
+    fn size_increase_when_push() {
+        let mut stack = Stack1::new();
+        stack.push(false);
+        let result1 = stack.size();
+        stack.push(true);
+        let result2 = stack.size();
+        assert_eq!(result2, result1 + 1);
+    }
+
+    #[test]
+    fn push_and_top() {
+        let mut stack = Stack1::new();
+        stack.push(false);
+        let result1 = stack.top();
+        stack.push(true);
+        let result2 = stack.top();
+        assert_eq!(result1, Ok(false));
+        assert_eq!(result2, Ok(true));
+    }
+
+    #[test]
+    fn size_decreases_when_pop() {
+        let mut stack = Stack1::new();
+        stack.push(false);
+        stack.push(true);
+        let result1 = stack.size();
+        stack.pop();
+        let result2 = stack.size();
+        assert_eq!(result1, result2 - 1);
+    }
+
+    #[test]
+    fn empty_when_created() {
+        let result = Stack1::new().size();
+        assert_eq!(result, 0);
+    }
+
+    #[test]
+    fn empty_does_not_pop() {
+        let mut stack = Stack1::new();
+        let result = stack.pop();
+        assert_eq!(result, Err("Empty stack".into()));
+    }
+
+}
+#+end_src
+
+* implementing the stack
+The idea here is to use an integer value to host a sequence of bits, each
+representing a value pushed in the stack.
+
+We can emulate the push behavior by executing a left shift of one and adding 1
+only if the input value is ~true~
+
+The following example is made with a 4 bit value just to make it easier to read
+
+e.g.
+1. stack status is is ~0b0001~
+2. stack receive a ~PUSH true~
+   a. left shift the status; now is ~0b0010~
+   b. add one to the status; now is ~0b0011~
+3. stack receive a ~PUSH false~
+   a. left shift the status; now is ~0b0110~
+
+the right shift can be used as pop
+e.g
+1. stack status is ~0b0110~
+2. stack receive a ~POP~
+   a. evaluate ~status & 0b0001~ and store the result
+   b. right shift the status; now is ~0b0011~
+   c. return the stored result (is now ~false~)
+3. stack receive a ~POP~
+   a. evaluate ~status & 0b0001~ and store the result
+   b. right shift the status; now is ~0b0001~
+   c. return the stored result (is now ~true~)
+
+as ~0b0000 >> 1 == 0b000~ (shift right 0 returns 0) we need a way to know when
+our stack is empty; a possible way is to define the empty status equal to ~0b0001~
