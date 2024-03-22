@@ -1,0 +1,119 @@
+#+ORG2BLOG:
+#+DATE: [2024-03-22 ven 10:15]
+#+OPTIONS: toc:nil num:nil todo:nil pri:nil tags:nil ^:nil
+#+CATEGORY: Org2Blog, WordPress
+#+TAGS: Emacs, Lisp
+#+DESCRIPTION:
+#+TITLE: Stacking bits
+We are digressing a little from our previous path about trees to meet a data
+structure which has a deep connection with (binary) trees.
+
+I will show a very compact (memory efficient) and fast implementation of a binary stack.
+
+In this post I will also show how to use Rust types to implement failures and success
+as well as some Test Driven Design example.
+
+For those who want to have a look to previous posts, you can check
+- here
+- and here
+* TODO what is a stack
+A stack is a data structure which allow you to retrieve the last datum you put
+into.
+
+This is very similar to a stack of books on your desk: the most common
+operations you can do are:
+- to add a book on the top; also known as ~push~
+- to look at the topmost book; also known as ~top~
+- to remove the topmost book; also known as ~pop~
+- to count how many books are in our stack; ~size~
+
+It is also known as Last In First Out queue, sometime written with the LIFO
+achronym.
+* TODO defining a binary stack
+Instead of creating a generic stack I'd like to focus on a very specific case: a
+stack which can only hold boolean values.
+
+The signature of the api could be as follows
+#+begin_src rust
+// warning: this code does not compile
+struct Stack {}
+
+fn push(stack : Stack, value: bool) {}
+
+fn top(stack : Stack) -> bool {}
+
+fn pop(stack : Stack) -> bool {}
+
+fn size(stack : Stack) -> u32 {}
+#+end_src
+
+To start this project I chose to create a library:
+
+#+begin_src bash
+cargo init --lib .
+#+end_src
+This creates a ~lib.rs~ file in the ~src~ directory with some example code
+
+Rust allow to create a trait implementation for this structure; I will add the
+minimum code needed to compile it
+
+#+begin_src rust
+pub struct Stack0 {}
+
+impl Stack0 {
+    pub fn push(self: & mut Stack0, value: bool) {
+    }
+
+    pub fn top(self: & Stack0) -> bool {
+        true
+    }
+
+    pub fn pop(self: & mut Stack0) -> bool {
+        true
+    }
+
+    pub fn size(self: & Stack0) -> u32 {
+        1
+    }
+}
+#+end_src
+* TODO test first design
+- show how to create and run tests
+- add some basic tests
+* TODO managing unwanted status
+Now I have couple of questions
+- What happens when I try to get a book from an empty stack?
+- Can a stack grow forever? Or can I decide it is too tall to grow?
+
+Rust uses the ~Result~ enumeration to express this concept; a ~Result~ can be
+either be ~Ok(some_value)~ or ~Err(error)~.
+
+Being ~Result<R, E>~ a generic type, I need to specify both the result type ~R~
+and the error type ~E~
+
+The stack API can be now modified to tackle our questions:
+#+begin_src rust
+pub struct Stack1 {}
+
+impl Stack1 {
+    pub fn push(self: & mut Stack1, value: bool) -> Result<bool, str>{
+        Ok(value)
+    }
+
+    pub fn top(self: & Stack1) -> Result<bool, str> {
+        Ok(true)
+    }
+
+    pub fn pop(self: & mut Stack1) -> Result<bool, str> {
+        Ok(true)
+    }
+
+    pub fn size(self: & Stack1) -> u32 {
+        1
+    }
+}
+
+and so our tests
+#+end_src
+* TODO implementing the stack
+- creating the actual code
