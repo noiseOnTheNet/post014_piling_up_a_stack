@@ -295,3 +295,82 @@ e.g
 
 as ~0b0000 >> 1 == 0b000~ (shift right 0 returns 0) we need a way to know when
 our stack is empty; a possible way is to define the empty status equal to ~0b0001~
+
+I will use an unsigned integer of type ~usize~ in this example. The number of
+bytes of this integer depends on the cpu architecture, it may be 64 or 32 in
+most cases.
+
+How can we calculate the size of the stack? we use one bit to mark the start
+point, so if we count all bits after it we have the result.
+
+Rust has two interesting features for this kind of calculation; we know the
+number of bits of ~usize~ from the constant ~usize::BITS~ and the function
+~usize::leading_zeros~ returns the count of the bits before our marker.
+
+here is the full implementation:
+#+begin_src rust
+pub struct Stack1 {
+    stack: usize
+}
+
+impl Stack1 {
+    pub fn new() -> Stack1 {
+        Stack1 { stack: 1 }
+    }
+
+    pub fn push(& mut self, value: bool) -> Result<bool, String>{
+        self.stack = self.stack << 1;
+        if value{
+            self.stack += 1;
+        }
+        Ok(value)
+    }
+
+    pub fn top(& self) -> Result<bool, String> {
+        if self.stack == 1 {
+            return Err("Empty stack".into())
+        }
+        Ok((self.stack & 1) == 1)
+    }
+
+    pub fn pop(& mut self) -> Result<bool, String> {
+        if self.stack == 1 {
+            return Err("Empty stack".into())
+        }
+        let result = (self.stack & 1) == 1;
+        self.stack = self.stack >> 1;
+        Ok(result)
+    }
+
+    pub fn size(& self) -> u32 {
+        usize::BITS - usize::leading_zeros(self.stack) - 1
+    }
+}
+#+end_src
+
+* a last remark on error types and borrow checker rules
+It may sound strange to have a very compact and fast implementation like this
+one with an error type like ~String~; we are actually using constant strings so
+a type like ~&str~ should be enough right?
+
+Well, no.
+
+If we use a signature like
+#+begin_src rust
+fn pop(& mut self) -> Result<bool, &str>;
+#+end_src
+we are actually using this lifetime signature
+#+begin_src rust
+fn pop<'a>(& mut 'a self) -> Result<bool, & 'a str>;
+#+end_src
+
+This means that we cannot execute something like
+#+begin_src rust
+let result1 = stack.pop(true);
+let result2 = stack.pop(true);
+#+end_src
+because the first call *may* return an ~Err(& 'a str)~ which is like a borrow of a mutable pointer that cannot be done twice.
+
+So, can we have a more efficient definition of the error type? Sure we can use an enumeration.
+
+But this is for another post.

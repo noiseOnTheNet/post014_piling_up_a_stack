@@ -32,39 +32,34 @@ impl Stack1 {
     }
 
     pub fn push(& mut self, value: bool) -> Result<bool, String>{
+        self.stack = self.stack << 1;
+        if value{
+            self.stack += 1;
+        }
         Ok(value)
     }
 
     pub fn top(& self) -> Result<bool, String> {
-        Ok(true)
+        if self.stack == 1 {
+            return Err("Empty stack".into())
+        }
+        Ok((self.stack & 1) == 1)
     }
 
     pub fn pop(& mut self) -> Result<bool, String> {
-        Ok(true)
+        if self.stack == 1 {
+            return Err("Empty stack".into())
+        }
+        let result = (self.stack & 1) == 1;
+        self.stack = self.stack >> 1;
+        Ok(result)
     }
 
     pub fn size(& self) -> u32 {
-        1
+        usize::BITS - usize::leading_zeros(self.stack) - 1
     }
 }
-// impl BStack0{
-//     pub fn new() -> BStack0 {
-//         BStack0 { stack: 1 }
-//     }
 
-//     pub fn pop(self : & mut BStack0) -> Result<usize, str> {
-//         Ok(0)
-//     }
-
-//     fn size(self : & BStack0) -> u32 {
-//         //what is the first
-//         usize::BITS - usize::leading_zeros(self.stack) - 1
-//     }
-
-//     fn is_empty(self : & BStack0) -> bool {
-//         self.stack == 1
-//     }
-// }
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -109,7 +104,7 @@ mod tests {
         let result1 = stack.size();
         stack.pop();
         let result2 = stack.size();
-        assert_eq!(result1, result2 - 1);
+        assert_eq!(result1, result2 + 1);
     }
 
     #[test]
